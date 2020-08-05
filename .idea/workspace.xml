@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2f247eb8-b425-43c8-a518-90e203957237" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/src/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
