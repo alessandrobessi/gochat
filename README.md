@@ -1,6 +1,6 @@
 # gochat
 
-A simple multi user client/server chat application written in Go.
+A simple multi user client/server chat application written in Go using less than 250 loc.
 Useful to learn how to deal with concurrency in Go (goroutines, channels, and mutexes). 
 
 ### Usage
