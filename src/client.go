@@ -1,11 +1,12 @@
 package main
 
-import "net"
-import "fmt"
-import "os"
-import "bufio"
-import "strings"
-
+import (
+	"bufio"
+	"fmt"
+	"net"
+	"os"
+	"strings"
+)
 
 func receiveMessages(conn net.Conn) {
 	for {
@@ -22,17 +23,17 @@ func main() {
 	conn, _ := net.Dial("tcp", "127.0.0.1:8000")
 	defer conn.Close()
 
-	fmt.Fprintf(conn, "!name " + name)
+	fmt.Fprintf(conn, "!name "+name)
 
 	go receiveMessages(conn)
-	
+
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		text, _ := reader.ReadString('\n')
-		fmt.Fprintf(conn, text + "\n")
+		fmt.Fprintf(conn, text+"\n")
 
 		if strings.HasPrefix(text, "!quit") {
 			break
-		}		
+		}
 	}
 }
