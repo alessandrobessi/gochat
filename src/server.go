@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
 	"strings"
 	"sync"
@@ -24,12 +25,12 @@ type Client struct {
 	name      string
 	conn      net.Conn
 	isActive  bool
-	isNameSet bool
+	isNameSet bool // indicates whether a name have been set by the user or the default (client id) is used
 }
 
 type ActiveClients struct {
 	m   map[string]Client
-	mux sync.Mutex
+	mux sync.Mutex // to avoid race conditions
 }
 
 func (c *ActiveClients) HasKey(key string) bool {
@@ -78,8 +79,9 @@ func (c *ActiveClients) DeleteClient(key string) {
 	c.mux.Unlock()
 }
 
-var activeClients ActiveClients
+var activeClients ActiveClients // global struct containing information about active clients
 
+// reads from the privateMessageChan and send private messages to users
 func sendPrivateMessages(privateMessagesChan chan PrivateMessage) {
 	for {
 		select {
@@ -89,18 +91,20 @@ func sendPrivateMessages(privateMessagesChan chan PrivateMessage) {
 				if name == msg.recipient && client.isActive == true {
 					_, err := fmt.Fprintf(client.conn, "[DM] "+msg.sender+": "+msg.body)
 					if err != nil {
-						fmt.Print("Can't send message to " + msg.recipient + "\n")
+						log.Print("Can't send message to " + msg.recipient + "\n")
 					}
-					fmt.Print("DM from " + msg.sender + " to " + msg.recipient + ": " + msg.body)
+					log.Print("DM from " + msg.sender + " to " + msg.recipient + ": " + msg.body)
 					sent = true
 				}
 			}
+
+			// in case the server can't send the message to a user
 			if sent == false {
-				for id, client := range *activeClients.Map() {
-					if id == msg.sender && client.isActive == true {
+				for name, client := range *activeClients.Map() {
+					if name == msg.sender && client.isActive == true {
 						_, err := fmt.Fprintf(client.conn, "Failed to send DM: "+msg.recipient+" is not in the chat\n")
 						if err != nil {
-							fmt.Print("Can't send message to " + client.name + "\n")
+							log.Print("Can't send message to " + client.name + "\n")
 						}
 						sent = true
 					}
@@ -110,6 +114,7 @@ func sendPrivateMessages(privateMessagesChan chan PrivateMessage) {
 	}
 }
 
+// reads from the publicMessageChan and send public messages to all the active users
 func sendPublicMessages(publicMessagesChan chan PublicMessage) {
 	for {
 		select {
@@ -118,16 +123,16 @@ func sendPublicMessages(publicMessagesChan chan PublicMessage) {
 				if name != msg.sender && client.isActive == true {
 					_, err := fmt.Fprintf(client.conn, msg.sender+": "+msg.body)
 					if err != nil {
-						fmt.Print("Can't send message to " + client.name + "\n")
+						log.Print("Can't send message to " + client.name + "\n")
 					}
 				}
 			}
-			fmt.Print(msg.sender + ": " + msg.body)
-
+			log.Print(msg.sender + ": " + msg.body)
 		}
 	}
 }
 
+// reads from the clientsChan and updates the ActiveClient struct
 func updateActiveClients(clientsChan chan Client) {
 	for {
 		select {
@@ -139,6 +144,7 @@ func updateActiveClients(clientsChan chan Client) {
 	}
 }
 
+// handles a new connection once it has been established
 func handleConnection(client Client,
 	publicMessagesChan chan PublicMessage,
 	privateMessagesChan chan PrivateMessage,
@@ -167,6 +173,7 @@ func handleConnection(client Client,
 			name = name[:len(name)-1]
 			if activeClients.HasKey(name) {
 
+				// in case the user chooses a username already used by an active user the client id is used as name
 				if client.isNameSet == false {
 					client.isActive = false
 					clientsChan <- client
@@ -188,6 +195,7 @@ func handleConnection(client Client,
 				}
 
 			} else {
+				// in case the user chooses an available name
 				client.isActive = false
 				clientsChan <- client
 
@@ -231,7 +239,7 @@ func main() {
 	go sendPrivateMessages(privateMessagesChan)
 	go updateActiveClients(clientsChan)
 
-	fmt.Println("Start chat server...")
+	log.Println("Start chat server...")
 	server, _ := net.Listen("tcp", ":8000")
 
 	for {
