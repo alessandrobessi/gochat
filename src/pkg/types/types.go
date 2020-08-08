@@ -2,20 +2,20 @@ package types
 
 import "net"
 
-// PublicMessage is struct representing a public message
+// PublicMessage is a struct representing a public message
 type PublicMessage struct {
 	Sender string
 	Body   string
 }
 
-// PrivateMessage is struct representing a private message
+// PrivateMessage is a struct representing a private message
 type PrivateMessage struct {
 	Sender    string
 	Body      string
 	Recipient string
 }
 
-// Client is struct representing a client connected to the server
+// Client is a struct representing a client connected to the server
 type Client struct {
 	ID        string
 	Name      string
