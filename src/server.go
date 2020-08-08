@@ -144,11 +144,75 @@ func updateActiveClients(clientsChan chan Client) {
 	}
 }
 
+// handles !quit
+func handleQuit(client Client, publicMessagesChan chan PublicMessage, clientsChan chan Client) {
+	publicMessagesChan <- PublicMessage{
+		sender: "Server",
+		body:   fmt.Sprintf("%s (%s) left the chat\n", client.name, client.id),
+	}
+	client.isActive = false
+	clientsChan <- client
+}
+
+// handle !name
+func handleName(msg string, client Client, publicMessagesChan chan PublicMessage, privateMessagesChan chan PrivateMessage, clientsChan chan Client) {
+	msgSplit := strings.Split(msg, " ")
+	name := msgSplit[1]
+	name = name[:len(name)-1]
+	if activeClients.HasKey(name) {
+
+		// in case the user chooses a username already used by an active user the client id is used as name
+		if client.isNameSet == false {
+			client.isActive = false
+			clientsChan <- client
+
+			client.name = client.id
+			client.isActive = true
+			clientsChan <- client
+
+			publicMessagesChan <- PublicMessage{
+				sender: "Server",
+				body:   fmt.Sprintf("Client %s is %s\n", client.id, client.id),
+			}
+		}
+
+		privateMessagesChan <- PrivateMessage{
+			sender:    "Server",
+			body:      fmt.Sprintf("%s is already taken. Use `!name [your-name]` to change it\n", name),
+			recipient: client.name,
+		}
+
+	} else {
+		// in case the user chooses an available name
+		client.isActive = false
+		clientsChan <- client
+
+		client.name = name
+		client.isActive = true
+		client.isNameSet = true
+		clientsChan <- client
+
+		publicMessagesChan <- PublicMessage{
+			sender: "Server",
+			body:   fmt.Sprintf("Client %s is %s\n", client.id, client.name),
+		}
+	}
+}
+
+// handles !dm
+func handleDM(msg string, client Client, privateMessagesChan chan PrivateMessage, clientsChan chan Client) {
+	msgSplit := strings.Split(msg, " ")
+	recipient := msgSplit[1]
+
+	privateMessagesChan <- PrivateMessage{
+		sender:    client.name,
+		body:      fmt.Sprint(strings.Join(msgSplit[2:], " ")),
+		recipient: recipient,
+	}
+}
+
 // handles a new connection once it has been established
-func handleConnection(client Client,
-	publicMessagesChan chan PublicMessage,
-	privateMessagesChan chan PrivateMessage,
-	clientsChan chan Client) {
+func handleConnection(client Client, publicMessagesChan chan PublicMessage, privateMessagesChan chan PrivateMessage, clientsChan chan Client) {
 
 	publicMessagesChan <- PublicMessage{
 		sender: "Server",
@@ -157,67 +221,14 @@ func handleConnection(client Client,
 
 	for {
 		msg, _ := bufio.NewReader(client.conn).ReadString('\n')
+
 		if msg == "" || strings.HasPrefix(msg, "!quit") {
-			publicMessagesChan <- PublicMessage{
-				sender: "Server",
-				body:   fmt.Sprintf("%s (%s) left the chat\n", client.name, client.id),
-			}
-			client.isActive = false
-			clientsChan <- client
+			handleQuit(client, publicMessagesChan, clientsChan)
 			return
-		}
-
-		if strings.HasPrefix(msg, "!name") {
-			msgSplit := strings.Split(msg, " ")
-			name := msgSplit[1]
-			name = name[:len(name)-1]
-			if activeClients.HasKey(name) {
-
-				// in case the user chooses a username already used by an active user the client id is used as name
-				if client.isNameSet == false {
-					client.isActive = false
-					clientsChan <- client
-
-					client.name = client.id
-					client.isActive = true
-					clientsChan <- client
-
-					publicMessagesChan <- PublicMessage{
-						sender: "Server",
-						body:   fmt.Sprintf("Client %s is %s\n", client.id, client.id),
-					}
-				}
-
-				privateMessagesChan <- PrivateMessage{
-					sender:    "Server",
-					body:      fmt.Sprintf("%s is already taken. Use `!name [your-name]` to change it\n", name),
-					recipient: client.name,
-				}
-
-			} else {
-				// in case the user chooses an available name
-				client.isActive = false
-				clientsChan <- client
-
-				client.name = name
-				client.isActive = true
-				client.isNameSet = true
-				clientsChan <- client
-
-				publicMessagesChan <- PublicMessage{
-					sender: "Server",
-					body:   fmt.Sprintf("Client %s is %s\n", client.id, client.name),
-				}
-			}
-
+		} else if strings.HasPrefix(msg, "!name") {
+			handleName(msg, client, publicMessagesChan, privateMessagesChan, clientsChan)
 		} else if strings.HasPrefix(msg, "!dm") {
-			msgSplit := strings.Split(msg, " ")
-			recipient := msgSplit[1]
-			privateMessagesChan <- PrivateMessage{
-				sender:    client.name,
-				body:      fmt.Sprint(strings.Join(msgSplit[2:], " ")),
-				recipient: recipient,
-			}
+			handleDM(msg, client, privateMessagesChan, clientsChan)
 		} else {
 			publicMessagesChan <- PublicMessage{
 				sender: client.name,
