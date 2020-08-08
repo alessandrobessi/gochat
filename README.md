@@ -5,10 +5,10 @@ Useful to learn how to deal with concurrency in Go (goroutines, channels, and mu
 
 ### Usage
 Launch the server:
-`go run server.go`
+`go run src/cmd/server/server.go`
 
 Launch one or more clients:
-`go run client.go`
+`go run src/cmd/client/client.go`
 
 ### Commands
 - `!quit` to leave the chat
